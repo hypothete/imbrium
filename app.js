@@ -1,4 +1,4 @@
-(function(THREE, console){
+(function(THREE, console, localStorage){
 	'use strict';
 
 	var renderer = new THREE.WebGLRenderer({
@@ -38,17 +38,28 @@
 		renderer.domElement.setAttribute('oncontextmenu', 'return false');
 
 		spot.castShadow = true;
-		spot.shadowCameraNear = 10;
+		spot.shadowCameraNear = 100;
 		spot.shadowMapWidth = spot.shadowMapHeight = 2048;
-		spot.shadowCameraFov = 30;
-		spot.angle = 30*Math.PI/180;
-		scene.add(spot, spotHelper);
+		spot.shadowCameraFov = 25;
+		spot.angle = 25*Math.PI/180;
+		
 
 		if(useFPV){
+			var storedPositions = JSON.parse(localStorage.getItem('fpv-position'));
+
+			if (storedPositions && storedPositions.length){
+				fpv.position.set(storedPositions[0].x, storedPositions[0].y, storedPositions[0].z);
+				fpv.children[0].rotation.x = storedPositions[1];
+				fpv.rotation.y = storedPositions[2];
+				camera.position.z = storedPositions[3];
+			}
 			scene.add(fpv);
 		}
 
-		spot.position.set(240,45,0);
+		scene.add(spot, spotHelper);
+
+
+		spot.position.set(250,45,0);
 		loadTerrain();
 
 		window.addEventListener('keydown', keyDownHandler, false);
@@ -79,9 +90,9 @@
 	function loadTerrain(){
 		var txLoad = new THREE.TextureLoader();
 		txLoad.load('imbrium.jpg', function(tex){
-			var detail = 128;
-			var scale = 2;
-			var mapGeo = new THREE.PlaneGeometry(100,100,detail,detail),
+			var detail = 256;
+			var scale = 3;
+			var mapGeo = new THREE.PlaneGeometry(115,115,detail,detail),
 				mapCan = document.createElement('canvas'),
 				mapCtx = mapCan.getContext('2d'),
 				mapMat = new THREE.MeshStandardMaterial({
@@ -89,9 +100,9 @@
 				metalness: 0,
 				color: 0xaaaaa0
 			});
-			mapCan.width = detail;
-			mapCan.height = detail;
-			mapCtx.drawImage(tex.image,0,0,detail,detail);
+			mapCan.width = 1024;
+			mapCan.height = 1024;
+			mapCtx.drawImage(tex.image,0,0,mapCan.width,mapCan.height);
 			var mapData = mapCtx.getImageData(0,0,mapCan.width,mapCan.height);
 			mapGeo.vertices.forEach(function(vv){
 				var vx = Math.round((vv.x + detail/2)*mapCan.width/detail);
@@ -100,9 +111,8 @@
 				vv.z = scale*pixel/256; //just red channel
 			});
 			mapGeo.verticesNeedUpdate = true;
-			mapGeo.computeVertexNormals();
 			mapGeo.computeFaceNormals();
-			mapGeo.elementsNeedUpdate = true;
+			mapGeo.computeVertexNormals();
 			mapGeo.normalsNeedUpdate = true;
 			terrain = new THREE.Mesh(mapGeo, mapMat);
 			terrain.rotation.x -= Math.PI/2;
@@ -130,6 +140,7 @@
 		pitch.position.set(0,1.2,5);
 		playerMesh.position.set(0,0.5,0);
 		playerMesh.castShadow = true;
+		playerMesh.receiveShadow = true;
 		pitch.add(camera);
 		yaw.add(pitch,playerMesh);
 		function mouseMoveHandler(e){
@@ -146,7 +157,7 @@
 	}
 
 	function move(){
-		var speed = 0.1;
+		var speed = 0.3;
 		if(keys[87]){
 			fpv.translateZ(-speed);
 		}
@@ -164,9 +175,10 @@
 			raycaster.set(new THREE.Vector3(fpv.position.x,fpv.position.y+10,fpv.position.z), down);
 			var groundPt = raycaster.intersectObject(terrain, false);
 			if(groundPt.length){
-				fpv.position.y = groundPt[0].point.y;
+				fpv.position.y = groundPt[0].point.y;//cylinder half/height
 			}
 		}
+		localStorage.setItem('fpv-position', JSON.stringify([fpv.position,fpv.children[0].rotation.x, fpv.rotation.y,camera.position.z]));
 	}
 
 	function keyDownHandler(e){
@@ -206,4 +218,4 @@
 		}
 	}
 
-})(window.THREE, window.console);
+})(window.THREE, window.console, window.localStorage);
