@@ -1,4 +1,4 @@
-(function(THREE){
+(function(THREE, console){
 	'use strict';
 
 	var renderer = new THREE.WebGLRenderer({
@@ -35,6 +35,7 @@
 		document.body.appendChild(renderer.domElement);
 		renderer.setSize( window.innerWidth, window.innerHeight );
 		renderer.shadowMap.enabled = true;
+		renderer.domElement.setAttribute('oncontextmenu', 'return false');
 
 		spot.castShadow = true;
 		spot.shadowCameraNear = 10;
@@ -55,6 +56,7 @@
 		window.addEventListener('resize', onWindowResize, false);
 		window.addEventListener('mousedown', mouseDownHandler, false);
 		window.addEventListener('mouseup', mouseUpHandler, false);
+		window.addEventListener('wheel', wheelHandler, false);
 
 		animate();
 	}
@@ -196,4 +198,12 @@
 		renderer.setSize( window.innerWidth, window.innerHeight );
 	}
 
-})(window.THREE);
+	function wheelHandler(e){
+		
+		if(useFPV){
+			console.log(Math.round(e.deltaY));
+			camera.position.z += (0.1*camera.position.length()+0.01)*Math.abs(e.deltaY)/e.deltaY;
+		}
+	}
+
+})(window.THREE, window.console);
