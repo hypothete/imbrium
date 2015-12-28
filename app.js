@@ -145,6 +145,7 @@
 		else if(keys[68]){
 			fpv.translateX(speed);
 		}
+		fpv.position.y = altitude(fpv.position) || fpv.position.y || 0;
 
 		localStorage.setItem('fpv-position', JSON.stringify([fpv.position,fpv.children[0].rotation.x, fpv.rotation.y,camera.position.z]));
 	}
@@ -185,7 +186,7 @@
 
 	function altitude(pt){
 		if(terrain){
-			raycaster.set(new THREE.Vector3(pt.x,pt.y+1,pt.z), down);
+			raycaster.set(new THREE.Vector3(pt.x,pt.y+100,pt.z), down);
 			groundPt = raycaster.intersectObject(terrain, false);
 			if(groundPt.length){
 				return groundPt[0].point.y;
