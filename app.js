@@ -6,32 +6,18 @@
 		}),
 		scene = new THREE.Scene(),
 		camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 1, 10000),
-		controls,
 		spot = new THREE.SpotLight(0xffffff, 1),
 		spotHelper = new THREE.SpotLightHelper( spot ),
 		raycaster = new THREE.Raycaster(),
 		down = new THREE.Vector3(0,-1,0),
-		fpv,
 		terrain,
 		playerMesh,
+		groundPt,
 		keys = {},
-		useFPV = true,
-		mousedown = false;
-
-	if(useFPV){
+		mousedown = false,
 		fpv = new FPV(camera);
-	}
-	else{
-		controls = new THREE.OrbitControls(camera, renderer.domElement);
-		controls.enableDamping = true;
-		controls.dampingFactor = 0.1;
-		controls.minPolarAngle = Math.PI/8;
-		controls.maxPolarAngle = Math.PI/2 - 0.1;
-		camera.position.set(0,10,50);
-	}
 
 	function init(){
-
 		document.body.appendChild(renderer.domElement);
 		renderer.setSize( window.innerWidth, window.innerHeight );
 		renderer.shadowMap.enabled = true;
@@ -42,23 +28,17 @@
 		spot.shadowMapWidth = spot.shadowMapHeight = 2048;
 		spot.shadowCameraFov = 25;
 		spot.angle = 25*Math.PI/180;
-		
 
-		if(useFPV){
-			var storedPositions = JSON.parse(localStorage.getItem('fpv-position'));
+		var storedPositions = JSON.parse(localStorage.getItem('fpv-position'));
 
-			if (storedPositions && storedPositions.length){
-				fpv.position.set(storedPositions[0].x, storedPositions[0].y, storedPositions[0].z);
-				fpv.children[0].rotation.x = storedPositions[1];
-				fpv.rotation.y = storedPositions[2];
-				camera.position.z = storedPositions[3];
-			}
-			scene.add(fpv);
+		if (storedPositions && storedPositions.length){
+			fpv.position.set(storedPositions[0].x, storedPositions[0].y, storedPositions[0].z);
+			fpv.children[0].rotation.x = storedPositions[1];
+			fpv.rotation.y = storedPositions[2];
+			camera.position.z = storedPositions[3];
 		}
-
+		scene.add(fpv);
 		scene.add(spot, spotHelper);
-
-
 		spot.position.set(250,45,0);
 		loadTerrain();
 
@@ -76,13 +56,7 @@
 
 	function animate(){
 		window.requestAnimationFrame(animate);
-		if(useFPV){
-			move();
-		}
-		else {
-			controls.update();
-		}
-
+		move();
 		spotHelper.update();
 		renderer.render(scene, camera);
 	}
@@ -171,13 +145,7 @@
 		else if(keys[68]){
 			fpv.translateX(speed);
 		}
-		if(terrain){
-			raycaster.set(new THREE.Vector3(fpv.position.x,fpv.position.y+10,fpv.position.z), down);
-			var groundPt = raycaster.intersectObject(terrain, false);
-			if(groundPt.length){
-				fpv.position.y = groundPt[0].point.y;//cylinder half/height
-			}
-		}
+
 		localStorage.setItem('fpv-position', JSON.stringify([fpv.position,fpv.children[0].rotation.x, fpv.rotation.y,camera.position.z]));
 	}
 
@@ -211,11 +179,27 @@
 	}
 
 	function wheelHandler(e){
-		
-		if(useFPV){
-			console.log(Math.round(e.deltaY));
-			camera.position.z += (0.1*camera.position.length()+0.01)*Math.abs(e.deltaY)/e.deltaY;
-		}
+		var length = camera.position.length();
+		camera.position.z += (0.1*length+0.01)*Math.abs(e.deltaY)/e.deltaY;
 	}
+
+	function altitude(pt){
+		if(terrain){
+			raycaster.set(new THREE.Vector3(pt.x,pt.y+1,pt.z), down);
+			groundPt = raycaster.intersectObject(terrain, false);
+			if(groundPt.length){
+				return groundPt[0].point.y;
+			}
+		}
+		return undefined;
+	}
+
+	function getWorldPosition(ob){
+		scene.updateMatrixWorld();
+		var obWorldPosition = new THREE.Vector3();
+		obWorldPosition.setFromMatrixPosition( ob.matrixWorld );
+		return obWorldPosition;
+	}
+
 
 })(window.THREE, window.console, window.localStorage);
