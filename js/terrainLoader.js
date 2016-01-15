@@ -4,70 +4,96 @@
 	var raycaster = new THREE.Raycaster(),
 		down = new THREE.Vector3(0,-1,0),
 		groundPt,
+		txLoad = new THREE.TextureLoader(),
 
 		terrain = {
-			loaded: false,
-			obj: null,
+			obj: new THREE.Object3D(),
+			width: 1145, //meters
+			height: 1145,
+			imageData: null,
+			imageWidth: null,
+			imageHeight: null,
+			material: new THREE.MeshStandardMaterial({
+				roughness: 1,
+				metalness: 0,
+				color: 0xaaaaa0
+			}),
+			chunkSize: 10, //meters
+			chunkDetail: 16, //vertices
+			normalMap: null,
 
-			load: function(scene){
-				var txLoad = new THREE.TextureLoader();
+			loadImageData: function(callback){
 				txLoad.load('imbrium.jpg', function(tex){
-					var detail = 256,
-						scale = 3,
-						mapGeo = new THREE.PlaneGeometry(115,115,detail,detail),
-						mapCan = document.createElement('canvas'),
-						mapCtx = mapCan.getContext('2d'),
-						mapMat = new THREE.MeshStandardMaterial({
-						roughness: 1,
-						metalness: 0,
-						color: 0xaaaaa0
-					});
-
-					mapCan.width = 1024;
-					mapCan.height = 1024;
+					var mapCan = document.createElement('canvas'),
+						mapCtx = mapCan.getContext('2d');
+					mapCan.width = tex.image.width;
+					mapCan.height = tex.image.height;
 					mapCtx.drawImage(tex.image,0,0,mapCan.width,mapCan.height);
-					var mapData = mapCtx.getImageData(0,0,mapCan.width,mapCan.height);
-
-					mapGeo.vertices.forEach(function(vv){
-						var vx = Math.round((vv.x + detail/2)*mapCan.width/detail);
-						var vy = Math.round((vv.y + detail/2)*mapCan.height/detail);
-						var pixel = mapData.data[vy*mapCan.width*4+vx*4];
-						vv.z = scale*pixel/256; //just red channel
-					});
-
-					mapGeo.verticesNeedUpdate = true;
-					mapGeo.computeFaceNormals();
-					mapGeo.computeVertexNormals();
-					mapGeo.normalsNeedUpdate = true;
-					terrain.obj = new THREE.Mesh(mapGeo, mapMat);
-					terrain.obj.rotation.x -= Math.PI/2;
-					terrain.obj.castShadow = true;
-					terrain.obj.receiveShadow = true;
-					scene.add(terrain.obj);
-
-					txLoad.load('imbrium-normal.jpg', function(tex){
-						mapMat.normalMap = tex;
-						mapMat.needsUpdate = true;
-						terrain.loaded = true;
-					});
-
+					terrain.imageData = mapCtx.getImageData(0,0,mapCan.width,mapCan.height).data;
+					terrain.imageWidth = tex.image.width;
+					terrain.imageHeight = tex.image.height;
+					if(callback) callback();
 				});
 			},
 
+			loadNormalMap: function(){
+				txLoad.load('imbrium-normal.jpg', function(tex){
+					this.material.normalMap = tex;
+					this.material.needsUpdate = true;
+				});
+			},
+
+			getHeightAt: function(pos){
+				//pos is assumed to be in the scene, so xz
+				var vx = Math.round(terrain.imageWidth * (pos.x + terrain.width/2)/terrain.width);
+				var vy = Math.round(terrain.imageHeight * (pos.y + terrain.height/2)/terrain.height);
+				var pixel = terrain.imageData[vy*terrain.imageWidth*4+vx*4];
+				return pixel/256; //just red channel, returns between 0 and 1
+			},
+
+			makeChunk: function(pos){
+				var chunkGeo = new THREE.PlaneGeometry(terrain.chunkSize,terrain.chunkSize,terrain.chunkDetail,terrain.chunkDetail),
+					chunkMat = terrain.material.clone(),
+					chunk = new THREE.Mesh(chunkGeo, chunkMat);
+
+				//reading in values from the scene, so xz are coords in pos
+				chunk.position.x = Math.round((pos.x + terrain.width/2)/(terrain.width/ terrain.chunkSize));
+				chunk.position.z = Math.round((pos.z + terrain.height/2)/(terrain.height/ terrain.chunkSize));
+
+				chunk.name = chunk.position.x + '-' + chunk.position.z;
+
+				//set chunk heightmap
+				chunkGeo.vertices.forEach(function(vv){
+					vv.z = terrain.getHeightAt(new THREE.Vector3(vv.x+terrain.chunkSize/2, 0, vv.y+terrain.chunkSize/2).add(chunk.position));
+				});
+
+				chunkGeo.verticesNeedUpdate = true;
+				chunkGeo.computeFaceNormals();
+				chunkGeo.computeVertexNormals();
+				chunkGeo.normalsNeedUpdate = true;
+
+				chunk.rotation.x -= Math.PI/2;
+				chunk.castShadow = true;
+				chunk.receiveShadow = true;
+
+				//update texture position
+
+				terrain.obj.add(chunk);
+			},
+
 			getAltitude: function(pt){
-				if(this.loaded){
-					raycaster.set(new THREE.Vector3(pt.x,pt.y+100,pt.z), down);
-					groundPt = raycaster.intersectObject(terrain.obj, false);
-					if(groundPt.length){
-						return groundPt[0].point.y;
-					}
+				raycaster.set(new THREE.Vector3(pt.x,pt.y+100,pt.z), down);
+				groundPt = raycaster.intersectObject(terrain.obj, true);
+				if(groundPt.length){
+					return groundPt[0].point.y;
 				}
-				return undefined;
 			}
 	};
 
-	window.loadTerrain = function(scene){
-		terrain.load(scene);
+	window.loadTerrain = function(scene, callback){
+		terrain.obj.name = 'terrain';
+		terrain.loadImageData(callback);
+		scene.add(terrain.obj);
 		return terrain;
 	};
 

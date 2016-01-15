@@ -21,6 +21,7 @@
 			playerMesh = new THREE.Mesh(debugGeo, debugMat);
 
 		fpv.obj = yaw;
+		yaw.name = 'FPV';
 		pitch.position.set(0,1.2,5);
 		playerMesh.position.set(0,0.5,0);
 		playerMesh.castShadow = true;
@@ -33,7 +34,7 @@
 		};
 
 		fpv.move = function(){
-			if(fpv.obj === null || !fpv.terrain.loaded) return;
+			if(fpv.obj === null || !fpv.terrain.imageData) return;
 
 			if(keys[87]){
 				fpv.obj.translateZ(-fpv.speed);

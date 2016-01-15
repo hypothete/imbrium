@@ -34,10 +34,16 @@
 		scene.add(fpv.obj);
 		scene.add(spot, spotHelper);
 		spot.position.set(250,45,0);
-		terrain = loadTerrain(scene);
+		terrain = loadTerrain(scene, function(){
+			// for(var i=0; i<3; i++){
+			// 	for(var j=0; j<3; j++){
+			// 		terrain.makeChunk(new THREE.Vector3(i*10,0,j*10));
+			// 	}
+			// }
+			terrain.makeChunk(fpv.obj.position);
+			animate();
+		});
 		fpv.setTerrain(terrain);
-
-		animate();
 	}
 
 	init();
@@ -49,12 +55,12 @@
 		renderer.render(scene, camera);
 	}
 
-	function getWorldPosition(ob){
-		scene.updateMatrixWorld();
-		var obWorldPosition = new THREE.Vector3();
-		obWorldPosition.setFromMatrixPosition( ob.matrixWorld );
-		return obWorldPosition;
-	}
+	// function getWorldPosition(ob){
+	// 	scene.updateMatrixWorld();
+	// 	var obWorldPosition = new THREE.Vector3();
+	// 	obWorldPosition.setFromMatrixPosition( ob.matrixWorld );
+	// 	return obWorldPosition;
+	// }
 
 
 })(window.THREE, window.console, window.localStorage, window.loadTerrain, window.FPV);
