@@ -69,7 +69,6 @@
 	window.loadTerrain = function(scene){
 		terrain.load(scene);
 		return terrain;
-	}
-
+	};
 
 })(window.THREE);

@@ -111,5 +111,6 @@
 		window.addEventListener('wheel', wheelHandler, false);
 
 		return fpv;
-	}
+	};
+	
 })(window.THREE, window.localStorage);
